@@ -1,0 +1,865 @@
+```html
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인간 언어 ↔ 컴퓨터 이진수 변환기</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            bg: '#0a0f1d',
+                            card: '#111827',
+                            accent: '#10b981',
+                            neon: '#00ffcc',
+                            purple: '#8b5cf6'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['Fira Code', 'Courier New', 'monospace'],
+                        sans: ['Inter', 'Noto Sans KR', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Noto+Sans+KR:wght@300;400;600;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
+
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #161b22;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+
+        .glow-effect {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+        }
+        .glow-effect:hover {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .bit-toggle-btn {
+            transition: all 0.15s ease-in-out;
+        }
+        .bit-toggle-btn.active {
+            background-color: #10b981;
+            color: #000000;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-black">
+
+    <!-- Toast Notification Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 pointer-events-none">
+        <i class="fa-solid fa-circle-check text-xl"></i>
+        <span id="toast-message" class="font-medium text-sm">복사되었습니다!</span>
+    </div>
+
+    <!-- Header -->
+    <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-black font-bold text-xl shadow-lg">
+                    <i class="fa-solid fa-code-merge"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                        컴퓨터 언어(01) 번역기
+                    </h1>
+                    <p class="text-xs text-gray-400 hidden sm:block">인간 언어(한글, 영어) ↔ 이진수(Binary Code) 실시간 변환</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Controls -->
+            <div class="flex items-center space-x-2">
+                <button id="audio-toggle-btn" title="이진수 신호음 켜기/끄기" class="p-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-emerald-400 transition-colors border border-gray-700">
+                    <i id="audio-icon" class="fa-solid fa-volume-xmark"></i>
+                </button>
+                <button id="help-btn" class="p-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-emerald-400 transition-colors border border-gray-700" title="이진수 원리 설명">
+                    <i class="fa-solid fa-circle-info"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
+        
+        <!-- Mode Navigation Tabs -->
+        <div class="flex border-b border-gray-800 mb-6 space-x-2 overflow-x-auto pb-1">
+            <button id="tab-text2bin" onclick="switchTab('text2bin')" class="px-5 py-2.5 font-medium text-sm rounded-t-xl transition-all flex items-center space-x-2 border-b-2 border-emerald-500 text-emerald-400 bg-emerald-500/10">
+                <i class="fa-solid fa-font"></i>
+                <span>텍스트 ➔ 이진수(01)</span>
+            </button>
+            <button id="tab-bin2text" onclick="switchTab('bin2text')" class="px-5 py-2.5 font-medium text-sm rounded-t-xl transition-all flex items-center space-x-2 border-b-2 border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-800/50">
+                <i class="fa-solid fa-terminal"></i>
+                <span>이진수(01) ➔ 텍스트</span>
+            </button>
+            <button id="tab-bitlab" onclick="switchTab('bitlab')" class="px-5 py-2.5 font-medium text-sm rounded-t-xl transition-all flex items-center space-x-2 border-b-2 border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-800/50">
+                <i class="fa-solid fa-microchip"></i>
+                <span>비트(Bit) 실습실</span>
+            </button>
+        </div>
+
+        <!-- TAB 1: Text to Binary -->
+        <div id="panel-text2bin" class="space-y-6">
+            
+            <!-- Controls Bar -->
+            <div class="bg-gray-900/60 p-4 rounded-xl border border-gray-800 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-4 text-sm">
+                    <label class="flex items-center space-x-2 text-gray-300">
+                        <span class="text-gray-400">인코딩 방식:</span>
+                        <select id="encoding-mode" class="bg-gray-800 border border-gray-700 text-emerald-400 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+                            <option value="utf8">UTF-8 (표준: 한글 3바이트 / 영어 1바이트)</option>
+                            <option value="unicode16">Unicode (16-bit 2바이트 고정)</option>
+                            <option value="ascii">ASCII (영어/기호 전용 8-bit)</option>
+                        </select>
+                    </label>
+
+                    <label class="flex items-center space-x-2 text-gray-300">
+                        <span class="text-gray-400">구분자:</span>
+                        <select id="binary-delimiter" class="bg-gray-800 border border-gray-700 text-emerald-400 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+                            <option value="space">공백 (01000001 01000010)</option>
+                            <option value="none">구분 없음 (0100000101000010)</option>
+                            <option value="dash">하이픈 (01000001-01000010)</option>
+                            <option value="comma">콤마 (01000001,01000010)</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="loadSampleText('ko')" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 transition">
+                        한글 예시
+                    </button>
+                    <button onclick="loadSampleText('en')" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 transition">
+                        영어 예시
+                    </button>
+                    <button onclick="clearTextInputs()" class="text-xs bg-red-950/40 hover:bg-red-900/50 text-red-400 px-3 py-1.5 rounded-lg border border-red-800/40 transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i> 지우기
+                    </button>
+                </div>
+            </div>
+
+            <!-- Two Column Input/Output Workspace -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Human Text Input -->
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between shadow-xl">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <label for="human-input" class="text-sm font-semibold text-gray-200 flex items-center space-x-2">
+                                <i class="fa-solid fa-pen-to-square text-emerald-400"></i>
+                                <span>인간 언어 입력 (한글, English, 숫자, 이모지)</span>
+                            </label>
+                            <span id="char-count" class="text-xs text-gray-400 code-font">0 자</span>
+                        </div>
+                        <textarea id="human-input" rows="7" placeholder="여기에 변환하고 싶은 글자를 입력하세요..." class="w-full bg-gray-950 border border-gray-800 rounded-xl p-4 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-base resize-y"></textarea>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between text-xs text-gray-500 border-t border-gray-800/60 pt-3">
+                        <span>실시간 변환 활성화됨</span>
+                        <span id="byte-size-info">0 Bytes (0 Bits)</span>
+                    </div>
+                </div>
+
+                <!-- Computer Binary Output -->
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between shadow-xl relative group">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-semibold text-gray-200 flex items-center space-x-2">
+                                <i class="fa-solid fa-microchip text-cyan-400"></i>
+                                <span>컴퓨터 이진수 출력 (0과 1)</span>
+                            </label>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="playBinaryAudio()" id="play-audio-btn" class="text-xs bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800/60 px-2.5 py-1 rounded-lg transition flex items-center space-x-1" title="이진수 비트음을 사운드로 듣기">
+                                    <i class="fa-solid fa-play text-xs"></i>
+                                    <span>비트 소리 듣기</span>
+                                </button>
+                                <button onclick="copyToClipboard('binary-output')" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 px-2.5 py-1 rounded-lg transition flex items-center space-x-1">
+                                    <i class="fa-regular fa-copy"></i>
+                                    <span>복사</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="binary-output" class="w-full h-44 bg-gray-950 border border-gray-800 rounded-xl p-4 text-emerald-400 code-font text-sm leading-relaxed overflow-y-auto break-all select-all">
+                            <span class="text-gray-600 italic">변환된 이진수 코드가 여기에 표시됩니다.</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between text-xs text-gray-500 border-t border-gray-800/60 pt-3">
+                        <span>0과 1의 조합 (컴퓨터 메모리 저장 상태)</span>
+                        <span id="binary-count-info" class="code-font text-emerald-500">0 Bits</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Character by Character Detailed Matrix Visualizer -->
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-md font-bold text-gray-200 flex items-center space-x-2">
+                        <i class="fa-solid fa-cubes-stacked text-purple-400"></i>
+                        <span>글자별 이진수(비트) 분해 매핑</span>
+                    </h3>
+                    <span class="text-xs text-gray-400">한 글자가 몇 개의 01 비트로 구성되는지 확인하세요</span>
+                </div>
+
+                <div id="char-breakdown-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto pr-1">
+                    <div class="col-span-full py-8 text-center text-gray-500 italic border border-dashed border-gray-800 rounded-xl">
+                        텍스트를 입력하면 문자 단위 01 분해도가 여기에 나타납니다.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TAB 2: Binary to Text -->
+        <div id="panel-bin2text" class="space-y-6 hidden">
+            
+            <div class="bg-gray-900/60 p-4 rounded-xl border border-gray-800 flex flex-wrap items-center justify-between gap-4">
+                <p class="text-sm text-gray-300">
+                    <i class="fa-solid fa-lightbulb text-yellow-400 mr-2"></i>
+                    0과 1로 구성된 컴퓨터 이진수 문자열을 넣으면 원래의 인간 언어로 되돌려줍니다.
+                </p>
+                <div class="flex items-center space-x-2">
+                    <button onclick="loadSampleBinary()" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 transition">
+                        이진수 예시 입력
+                    </button>
+                    <button onclick="clearBinaryInputs()" class="text-xs bg-red-950/40 hover:bg-red-900/50 text-red-400 px-3 py-1.5 rounded-lg border border-red-800/40 transition">
+                        지우기
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Binary Input -->
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between shadow-xl">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <label for="binary-input-reverse" class="text-sm font-semibold text-gray-200 flex items-center space-x-2">
+                                <i class="fa-solid fa-terminal text-emerald-400"></i>
+                                <span>이진수(01) 입력 (공백 구분이 없어도 가능)</span>
+                            </label>
+                            <span id="reverse-bin-status" class="text-xs text-emerald-400 code-font">0 Bits</span>
+                        </div>
+                        <textarea id="binary-input-reverse" rows="7" placeholder="예: 1100010101001000 1100101110011100 또는 01001000 01101001..." class="w-full bg-gray-950 border border-gray-800 rounded-xl p-4 text-emerald-400 code-font placeholder-gray-700 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-sm resize-y"></textarea>
+                    </div>
+                    <div id="binary-validation-msg" class="mt-3 text-xs text-gray-500">
+                        8비트(1Byte) 단위로 해석됩니다.
+                    </div>
+                </div>
+
+                <!-- Text Result Output -->
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between shadow-xl">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-semibold text-gray-200 flex items-center space-x-2">
+                                <i class="fa-solid fa-quote-left text-cyan-400"></i>
+                                <span>복원된 인간 언어 텍스트</span>
+                            </label>
+                            <button onclick="copyToClipboard('reverse-text-output')" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 px-2.5 py-1 rounded-lg transition flex items-center space-x-1">
+                                <i class="fa-regular fa-copy"></i>
+                                <span>복사</span>
+                            </button>
+                        </div>
+                        <div id="reverse-text-output" class="w-full h-44 bg-gray-950 border border-gray-800 rounded-xl p-4 text-gray-100 text-base leading-relaxed overflow-y-auto break-words">
+                            <span class="text-gray-600 italic">이진수를 해석한 결과가 여기에 표시됩니다.</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between text-xs text-gray-500 border-t border-gray-800/60 pt-3">
+                        <span>UTF-8 디코딩 완료</span>
+                        <span id="reverse-char-count" class="text-gray-400">0 자</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Bit Lab Simulator -->
+        <div id="panel-bitlab" class="space-y-6 hidden">
+            
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-800">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-100 flex items-center space-x-2">
+                            <i class="fa-solid fa-sliders text-emerald-400"></i>
+                            <span>인터랙티브 1바이트(8-Bit) 스위치 실습</span>
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-1">
+                            아래 8개 스위치(0과 1)를 직접 클릭해 켜고 꺼보세요. 2진수 스위치의 조합이 어떻게 아스키(ASCII) 문자 및 숫자로 변환되는지 실시간 관찰할 수 있습니다.
+                        </p>
+                    </div>
+                    <div class="flex items-center space-x-3 bg-gray-950 px-4 py-2 rounded-xl border border-gray-800">
+                        <span class="text-xs text-gray-400">현재 문자:</span>
+                        <span id="bitlab-char-display" class="text-2xl font-bold text-emerald-400 code-font">A</span>
+                        <span id="bitlab-dec-display" class="text-xs text-gray-400 code-font">(Dec: 65)</span>
+                    </div>
+                </div>
+
+                <!-- 8-Bit Interactive Switches Grid -->
+                <div class="grid grid-cols-8 gap-2 sm:gap-4 mb-8 max-w-3xl mx-auto">
+                    <!-- Bit 7 (128) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-gray-500 mb-1 code-font">128</span>
+                        <button id="bit-7" onclick="toggleBit(7)" class="bit-toggle-btn w-full aspect-square rounded-xl bg-gray-800 border-2 border-gray-700 text-gray-400 text-lg sm:text-2xl font-bold flex items-center justify-center hover:border-emerald-500">
+                            0
+                        </button>
+                        <span class="text-[10px] text-gray-500 mt-1">2⁷</span>
+                    </div>
+                    <!-- Bit 6 (64) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-gray-500 mb-1 code-font">64</span>
+                        <button id="bit-6" onclick="toggleBit(6)" class="bit-toggle-btn w-full aspect-square rounded-xl bg-gray-800 border-2 border-gray-700 text-gray-400 text-lg sm:text-2xl font-bold flex items-center justify-center hover:border-emerald-500">
+                            0
+                        </button>
+                        <span class="text-[10px] text-gray-500 mt-1">2⁶</span>
+                    </div>
+                    <!-- Bit 5 (32) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-gray-500 mb-1 code-font">32</span>
+                        <button id="bit-5" onclick="toggleBit(5)" class="bit-toggle-btn w-full aspect-square rounded-xl bg-gray-800 border-2 border-gray-700 text-gray-400 text-lg sm:text-2xl font-bold flex items-center justify-center hover:border-emerald-500">
+                            0
+                        </button>
+                        <span class="text-[10px] text-gray-500 mt-1">2⁵</span>
+                    </div>
+                    <!-- Bit 4 (16) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-gray-500 mb-1 code-font">16</span>
+                        <button id="bit-4" onclick="toggleBit(4)" class="bit-toggle-btn w-full aspect-square rounded-xl bg-gray-800 border-2 border-gray-700 text-gray-400 text-lg sm:text-2xl font-bold flex items-center justify-center hover:border-emerald-500">
+                            0
+                        </button>
+                        <span class="text-[10px] text-gray-500 mt-1">2⁴</span>
+                    </div>
+                    <!-- Bit 3 (8) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-gray-500 mb-1 code-font">8</span>
+                        <button id="bit-3" onclick="toggleBit(3)" class="bit-toggle-btn w-full aspect-square rounded-xl bg-gray-800 border-2 border-gray-700 text-gray-400 text-lg sm:text-2xl font-bold flex items-center justify-center hover:border-emerald-500">
+                            0
+                        </button>
+                        <span class="text-[10px] text-gray-500 mt-1">2³</span>
+                    </div>
+                    <!-- Bit 2 (4) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-gray-500 mb-1 code-font">4</span>
+                        <button id="bit-2" onclick="toggleBit(2)" class="bit-toggle-btn w-full aspect-square rounded-xl bg-gray-800 border-2 border-gray-700 text-gray-400 text-lg sm:text-2xl font-bold flex items-center justify-center hover:border-emerald-500">
+                            0
+                        </button>
+                        <span class="text-[10px] text-gray-500 mt-1">2²</span>
+                    </div>
+                    <!-- Bit 1 (2) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-gray-500 mb-1 code-font">2</span>
+                        <button id="bit-1" onclick="toggleBit(1)" class="bit-toggle-btn w-full aspect-square rounded-xl bg-gray-800 border-2 border-gray-700 text-gray-400 text-lg sm:text-2xl font-bold flex items-center justify-center hover:border-emerald-500">
+                            0
+                        </button>
+                        <span class="text-[10px] text-gray-500 mt-1">2¹</span>
+                    </div>
+                    <!-- Bit 0 (1) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-gray-500 mb-1 code-font">1</span>
+                        <button id="bit-0" onclick="toggleBit(0)" class="bit-toggle-btn w-full aspect-square rounded-xl bg-gray-800 border-2 border-gray-700 text-gray-400 text-lg sm:text-2xl font-bold flex items-center justify-center hover:border-emerald-500">
+                            0
+                        </button>
+                        <span class="text-[10px] text-gray-500 mt-1">2⁰</span>
+                    </div>
+                </div>
+
+                <!-- Mathematical Addition Formula Card -->
+                <div class="bg-gray-950 rounded-xl p-4 border border-gray-800 max-w-3xl mx-auto text-center">
+                    <span class="text-xs text-gray-400 block mb-2">10진수 계산 연산 과정:</span>
+                    <div id="bitlab-formula" class="code-font text-emerald-400 text-sm overflow-x-auto whitespace-nowrap">
+                        0 + 64 + 0 + 0 + 0 + 0 + 0 + 1 = 65 ('A')
+                    </div>
+                </div>
+            </div>
+
+            <!-- Educational Guide Card -->
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold">
+                        01
+                    </div>
+                    <h4 class="font-semibold text-gray-200 text-sm">1. 비트(Bit)와 바이트(Byte)</h4>
+                    <p class="text-xs text-gray-400 leading-relaxed">
+                        컴퓨터의 가장 작은 데이터 단위는 0과 1 상태를 뜻하는 <strong>1 Bit</strong>입니다. 8개의 비트가 모이면 <strong>1 Byte (2⁸ = 256가지 표현)</strong>가 됩니다.
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-sm font-bold">
+                        EN
+                    </div>
+                    <h4 class="font-semibold text-gray-200 text-sm">2. 알파벳 영어 (ASCII)</h4>
+                    <p class="text-xs text-gray-400 leading-relaxed">
+                        영문자와 숫자, 기호는 1바이트(8개의 0과 1)로 표현 가능합니다. 예: 대문자 'A'는 10진수 65, 이진수로 <code>01000001</code> 입니다.
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm font-bold">
+                        한
+                    </div>
+                    <h4 class="font-semibold text-gray-200 text-sm">3. 한글 인코딩 (UTF-8)</h4>
+                    <p class="text-xs text-gray-400 leading-relaxed">
+                        한글이나 이모지는 한 글자를 표현하기 위해 더 많은 조합이 필요하므로 <strong>3바이트(24비트)</strong>의 조합을 사용합니다. 예: '안' = <code>11101100 10100101 10001000</code>
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-gray-100 flex items-center space-x-2 mb-4">
+                <i class="fa-solid fa-graduation-cap text-emerald-400"></i>
+                <span>컴퓨터는 왜 0과 1만 쓸까요?</span>
+            </h3>
+            <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
+                <p>
+                    컴퓨터 중앙처리장치(CPU)와 메모리는 억 개의 아주 작은 <strong>전기 스위치(트랜지스터)</strong>로 이루어져 있습니다.
+                </p>
+                <div class="p-3 bg-gray-950 rounded-xl border border-gray-800 space-y-1">
+                    <div class="flex justify-between text-emerald-400 font-mono">
+                        <span>전기가 통함 (ON)</span>
+                        <span>= 숫자 1</span>
+                    </div>
+                    <div class="flex justify-between text-gray-500 font-mono">
+                        <span>전기가 안 통함 (OFF)</span>
+                        <span>= 숫자 0</span>
+                    </div>
+                </div>
+                <p>
+                    인간이 입력한 한글 '안녕'이나 영어 'Hello'도 컴퓨터 내부로 들어가는 순간 모두 전기 스위치의 ON/OFF 패턴인 <strong>0과 1 이진수(Binary)</strong>로 번역되어 계산됩니다.
+                </p>
+            </div>
+            <button onclick="closeModal()" class="mt-6 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-black font-semibold rounded-xl text-sm transition">
+                확인했습니다
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800/80 bg-gray-950 py-6 text-center text-xs text-gray-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>Human Language to Computer Binary Code Converter</span>
+            <span class="code-font text-emerald-500/80">01001000 01101001 00100001</span>
+        </div>
+    </footer>
+
+    <script>
+        // State variables
+        let soundEnabled = false;
+        let currentTab = 'text2bin';
+        let bitArray = [0, 1, 0, 0, 0, 0, 0, 1]; // Default ASCII 'A' (65)
+
+        // Web Audio Context initialization
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // Play brief beep audio for bit representation
+        function playTone(freq, type = 'sine', duration = 0.05) {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch (e) {
+                console.error("Audio error:", e);
+            }
+        }
+
+        function convertTextToBinary() {
+            const input = document.getElementById('human-input').value;
+            const mode = document.getElementById('encoding-mode').value;
+            const delimiterType = document.getElementById('binary-delimiter').value;
+            
+            let delimiter = ' ';
+            if (delimiterType === 'none') delimiter = '';
+            else if (delimiterType === 'dash') delimiter = '-';
+            else if (delimiterType === 'comma') delimiter = ',';
+
+            document.getElementById('char-count').innerText = `${input.length} 자`;
+
+            if (!input) {
+                document.getElementById('binary-output').innerHTML = '<span class="text-gray-600 italic">변환된 이진수 코드가 여기에 표시됩니다.</span>';
+                document.getElementById('byte-size-info').innerText = '0 Bytes (0 Bits)';
+                document.getElementById('binary-count-info').innerText = '0 Bits';
+                renderBreakdownCards([]);
+                return;
+            }
+
+            let binaryArray = [];
+            let totalBytes = 0;
+            let charMappings = [];
+
+            if (mode === 'utf8') {
+                const encoder = new TextEncoder();
+                for (let char of input) {
+                    const bytes = encoder.encode(char);
+                    totalBytes += bytes.length;
+                    const charBinaries = Array.from(bytes).map(b => b.toString(2).padStart(8, '0'));
+                    binaryArray.push(...charBinaries);
+                    charMappings.push({
+                        char: char,
+                        codePoint: 'U+' + char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0'),
+                        bytes: charBinaries,
+                        decValues: Array.from(bytes)
+                    });
+                }
+            } else if (mode === 'unicode16') {
+                for (let char of input) {
+                    const code = char.codePointAt(0);
+                    const bin = code.toString(2).padStart(16, '0');
+                    binaryArray.push(bin);
+                    totalBytes += 2;
+                    charMappings.push({
+                        char: char,
+                        codePoint: 'U+' + code.toString(16).toUpperCase().padStart(4, '0'),
+                        bytes: [bin.slice(0, 8), bin.slice(8)],
+                        decValues: [parseInt(bin.slice(0, 8), 2), parseInt(bin.slice(8), 2)]
+                    });
+                }
+            } else if (mode === 'ascii') {
+                for (let char of input) {
+                    const code = char.charCodeAt(0);
+                    const bin = (code & 0xFF).toString(2).padStart(8, '0');
+                    binaryArray.push(bin);
+                    totalBytes += 1;
+                    charMappings.push({
+                        char: char,
+                        codePoint: '0x' + code.toString(16).toUpperCase().padStart(2, '0'),
+                        bytes: [bin],
+                        decValues: [code]
+                    });
+                }
+            }
+
+            const outputString = binaryArray.join(delimiter);
+            document.getElementById('binary-output').innerText = outputString;
+
+            const totalBits = totalBytes * 8;
+            document.getElementById('byte-size-info').innerText = `${totalBytes} Bytes (${totalBits} Bits)`;
+            document.getElementById('binary-count-info').innerText = `${totalBits} Bits`;
+
+            renderBreakdownCards(charMappings);
+        }
+
+        function renderBreakdownCards(charMappings) {
+            const container = document.getElementById('char-breakdown-container');
+            if (charMappings.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-8 text-center text-gray-500 italic border border-dashed border-gray-800 rounded-xl">
+                        텍스트를 입력하면 문자 단위 01 분해도가 여기에 나타납니다.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            charMappings.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-950 border border-gray-800 rounded-xl p-3 flex flex-col justify-between hover:border-gray-700 transition';
+                
+                let displayChar = item.char === ' ' ? '공백 (Space)' : item.char === '\n' ? '줄바꿈 (\\n)' : item.char;
+                
+                let bytesHTML = item.bytes.map((b, idx) => `
+                    <div class="mt-1">
+                        <span class="text-[11px] text-gray-500 block">바이트 ${idx + 1} (${item.decValues[idx]}):</span>
+                        <span class="code-font text-emerald-400 font-bold text-xs tracking-wider">${b}</span>
+                    </div>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-gray-800/80 pb-2 mb-2">
+                        <span class="text-lg font-bold text-cyan-300 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">${displayChar}</span>
+                        <span class="text-[10px] code-font text-gray-400">${item.codePoint}</span>
+                    </div>
+                    <div class="space-y-1">
+                        ${bytesHTML}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function convertBinaryToText() {
+            const rawBinary = document.getElementById('binary-input-reverse').value;
+            const cleanBinary = rawBinary.replace(/[^01]/g, '');
+
+            document.getElementById('reverse-bin-status').innerText = `${cleanBinary.length} Bits`;
+
+            if (!cleanBinary) {
+                document.getElementById('reverse-text-output').innerHTML = '<span class="text-gray-600 italic">이진수를 해석한 결과가 여기에 표시됩니다.</span>';
+                document.getElementById('reverse-char-count').innerText = '0 자';
+                document.getElementById('binary-validation-msg').innerText = '8비트(1Byte) 단위로 해석됩니다.';
+                document.getElementById('binary-validation-msg').className = 'mt-3 text-xs text-gray-500';
+                return;
+            }
+
+            if (cleanBinary.length % 8 !== 0) {
+                document.getElementById('binary-validation-msg').innerText = `⚠️ 현재 ${cleanBinary.length}비트입니다. 8비트 단위 배수가 되면 완벽히 변환됩니다 (부족: ${8 - (cleanBinary.length % 8)}비트).`;
+                document.getElementById('binary-validation-msg').className = 'mt-3 text-xs text-amber-400';
+            } else {
+                document.getElementById('binary-validation-msg').innerText = '✓ 올바른 8비트(Byte) 정렬 형식입니다.';
+                document.getElementById('binary-validation-msg').className = 'mt-3 text-xs text-emerald-400';
+            }
+
+            try {
+                const byteArray = [];
+                for (let i = 0; i < cleanBinary.length; i += 8) {
+                    const byteString = cleanBinary.substr(i, 8);
+                    if (byteString.length === 8) {
+                        byteArray.push(parseInt(byteString, 2));
+                    }
+                }
+
+                const decoder = new TextDecoder('utf-8');
+                const decodedText = decoder.decode(new Uint8Array(byteArray));
+
+                document.getElementById('reverse-text-output').innerText = decodedText;
+                document.getElementById('reverse-char-count').innerText = `${decodedText.length} 자`;
+            } catch (err) {
+                document.getElementById('reverse-text-output').innerText = '해석 오류: 유효한 UTF-8 이진수 문자열이 아닙니다.';
+            }
+        }
+
+        function toggleBit(index) {
+            bitArray[7 - index] = bitArray[7 - index] === 1 ? 0 : 1;
+            
+            if (bitArray[7 - index] === 1) {
+                playTone(440 + (index * 60), 'sine', 0.08);
+            } else {
+                playTone(220 + (index * 30), 'triangle', 0.05);
+            }
+            
+            updateBitLabUI();
+        }
+
+        function updateBitLabUI() {
+            let totalDec = 0;
+            const values = [128, 64, 32, 16, 8, 4, 2, 1];
+            let formulaParts = [];
+
+            for (let i = 0; i < 8; i++) {
+                const bitValue = bitArray[i];
+                const bitWeight = values[i];
+                const btn = document.getElementById(`bit-${7 - i}`);
+
+                if (bitValue === 1) {
+                    btn.innerText = '1';
+                    btn.classList.add('active');
+                    totalDec += bitWeight;
+                    formulaParts.push(`<span class="text-emerald-400 font-bold">${bitWeight}</span>`);
+                } else {
+                    btn.innerText = '0';
+                    btn.classList.remove('active');
+                    formulaParts.push(`<span class="text-gray-600">0</span>`);
+                }
+            }
+
+            const charVal = String.fromCharCode(totalDec);
+            const isPrintable = totalDec >= 32 && totalDec <= 126;
+            
+            document.getElementById('bitlab-char-display').innerText = isPrintable ? `'${charVal}'` : `(특수기호: ${totalDec})`;
+            document.getElementById('bitlab-dec-display').innerText = `(10진수: ${totalDec})`;
+            document.getElementById('bitlab-formula').innerHTML = `${formulaParts.join(' + ')} = <strong class="text-emerald-300">${totalDec}</strong> (${isPrintable ? `'${charVal}'` : 'Control'})`;
+        }
+
+        function playBinaryAudio() {
+            const rawOutput = document.getElementById('binary-output').innerText;
+            const clean = rawOutput.replace(/[^01]/g, '');
+            if (!clean || clean.length === 0) return;
+
+            const btn = document.getElementById('play-audio-btn');
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+
+            const ctx = getAudioContext();
+            let step = 0;
+            const maxBeeps = Math.min(clean.length, 64); // Limit max play length for UX
+
+            const interval = setInterval(() => {
+                if (step >= maxBeeps) {
+                    clearInterval(interval);
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50');
+                    return;
+                }
+
+                const bit = clean[step];
+                if (bit === '1') {
+                    playTone(880, 'sine', 0.04);
+                } else {
+                    playTone(320, 'square', 0.02);
+                }
+                step++;
+            }, 60);
+        }
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            ['text2bin', 'bin2text', 'bitlab'].forEach(id => {
+                const btn = document.getElementById(`tab-${id}`);
+                const panel = document.getElementById(`panel-${id}`);
+                if (id === tabId) {
+                    btn.className = 'px-5 py-2.5 font-medium text-sm rounded-t-xl transition-all flex items-center space-x-2 border-b-2 border-emerald-500 text-emerald-400 bg-emerald-500/10';
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.className = 'px-5 py-2.5 font-medium text-sm rounded-t-xl transition-all flex items-center space-x-2 border-b-2 border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-800/50';
+                    panel.classList.add('hidden');
+                }
+            });
+            if (tabId === 'bitlab') {
+                updateBitLabUI();
+            }
+        }
+
+        function copyToClipboard(elementId) {
+            const target = document.getElementById(elementId);
+            const textToCopy = target.innerText || target.value;
+
+            if (!textToCopy || textToCopy.includes('변환된 이진수 코드가') || textToCopy.includes('결과가 여기에')) return;
+
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('클립보드에 복사되었습니다!');
+            } catch (err) {
+                showToast('복사에 실패했습니다.');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2000);
+        }
+
+        function loadSampleText(type) {
+            const input = document.getElementById('human-input');
+            if (type === 'ko') {
+                input.value = '안녕하세요! 컴퓨터는 0과 1로 생각합니다.';
+            } else if (type === 'en') {
+                input.value = 'Hello World! Computer Binary 10101';
+            }
+            convertTextToBinary();
+        }
+
+        function loadSampleBinary() {
+            const input = document.getElementById('binary-input-reverse');
+            // "한글 01" in UTF-8
+            input.value = '11101100 10100101 10001000 11101100 10001001 10010011 00100000 00110000 00110001';
+            convertBinaryToText();
+        }
+
+        function clearTextInputs() {
+            document.getElementById('human-input').value = '';
+            convertTextToBinary();
+        }
+
+        function clearBinaryInputs() {
+            document.getElementById('binary-input-reverse').value = '';
+            convertBinaryToText();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('info-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        window.onload = function() {
+            // Text Input Listener
+            document.getElementById('human-input').addEventListener('input', convertTextToBinary);
+            document.getElementById('encoding-mode').addEventListener('change', convertTextToBinary);
+            document.getElementById('binary-delimiter').addEventListener('change', convertTextToBinary);
+
+            // Binary Reverse Input Listener
+            document.getElementById('binary-input-reverse').addEventListener('input', convertBinaryToText);
+
+            // Sound Toggle
+            document.getElementById('audio-toggle-btn').addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                const icon = document.getElementById('audio-icon');
+                if (soundEnabled) {
+                    icon.className = 'fa-solid fa-volume-high text-emerald-400';
+                    showToast('사운드 효과음이 켜졌습니다.');
+                    getAudioContext();
+                    playTone(523.25, 'sine', 0.1);
+                } else {
+                    icon.className = 'fa-solid fa-volume-xmark';
+                    showToast('사운드 효과음이 꺼졌습니다.');
+                }
+            });
+
+            // Info Modal Button
+            document.getElementById('help-btn').addEventListener('click', () => {
+                const modal = document.getElementById('info-modal');
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+            });
+
+            // Initial view state setup
+            updateBitLabUI();
+        };
+    </script>
+</body>
+</html>
+```
